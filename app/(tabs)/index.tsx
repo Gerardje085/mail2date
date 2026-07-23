@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { Match, DateIdea, Profile } from '@/lib/types';
 import { AppLogo } from '@/components/AppLogo';
+import { generateAIMatchAnalysis, generateAIDateIdeas } from '@/lib/ai';
 
 const PLACEHOLDER_IMAGES = [
   'https://images.pexels.com/photos/3754323/pexels-photo-3754323.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -75,18 +76,12 @@ export default function TodayScreen() {
         .limit(20);
 
       if (candidates && candidates.length > 0) {
-        // Pick a random candidate and compute compatibility
+        // Pick a candidate and analyze compatibility with Gemini AI
         const randomIndex = Math.floor(Math.random() * candidates.length);
         const candidate = candidates[randomIndex] as Profile;
 
-        // Calculate compatibility based on shared interests
-        const sharedInterests = profile.interests.filter((i) =>
-          candidate.interests.includes(i)
-        );
-        const compatibility = Math.min(
-          95,
-          60 + sharedInterests.length * 8 + Math.floor(Math.random() * 10)
-        );
+        // Perform Gemini AI compatibility analysis
+        const aiAnalysis = await generateAIMatchAnalysis(profile, candidate);
 
         const { data: newMatch } = await supabase
           .from('matches')
@@ -94,7 +89,7 @@ export default function TodayScreen() {
             user_id: user.id,
             matched_user_id: candidate.id,
             match_date: new Date().toISOString().split('T')[0],
-            compatibility_score: compatibility,
+            compatibility_score: aiAnalysis.compatibility_score,
           })
           .select()
           .single();
@@ -102,11 +97,11 @@ export default function TodayScreen() {
         if (newMatch) {
           setMatch({ ...newMatch, profile: candidate } as Match);
 
-          // Generate date ideas based on shared interests
-          const ideas = generateDateIdeas(newMatch.id, user.id, sharedInterests, candidate);
+          // Generate Gemini AI date ideas tailored to city & interests
+          const aiIdeas = await generateAIDateIdeas(newMatch.id, user.id, profile, candidate);
           const { data: insertedIdeas } = await supabase
             .from('date_ideas')
-            .insert(ideas)
+            .insert(aiIdeas)
             .select();
           setDateIdeas(insertedIdeas || []);
         }

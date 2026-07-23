@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { Message, Profile, Conversation } from '@/lib/types';
 import { SAMPLE_ICEBREAKERS, SAFETY_RESOURCES } from '@/lib/constants';
+import { generateAIChatIcebreakers } from '@/lib/ai';
 import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from 'expo-router';
 
@@ -63,19 +64,17 @@ export default function ConversationScreen() {
         .maybeSingle();
       setOtherProfile(prof as Profile);
 
-      // Generate icebreakers based on shared interests
+      // Generate AI icebreakers based on shared interests & Gemini Flash
       if (prof && user) {
         const { data: myProfile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
-        const shared = (myProfile as Profile)?.interests?.filter((i) =>
-          (prof as Profile).interests.includes(i)
-        ) || [];
-        const interest = shared[0] || (prof as Profile).interests[0] || 'coffee';
-        const generated = SAMPLE_ICEBREAKERS.map((t) => t.replace('{interest}', interest.toLowerCase()));
-        setIcebreakers(generated);
+        if (myProfile) {
+          const generated = await generateAIChatIcebreakers(myProfile as Profile, prof as Profile);
+          setIcebreakers(generated);
+        }
       }
     }
 
@@ -106,8 +105,8 @@ export default function ConversationScreen() {
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+        (payload: { new: Record<string, any> }) => {
+          setMessages((prev: Message[]) => [...prev, payload.new as Message]);
         }
       )
       .subscribe();
@@ -134,7 +133,7 @@ export default function ConversationScreen() {
       .single();
 
     if (data) {
-      setMessages((prev) => [...prev, data as Message]);
+      setMessages((prev: Message[]) => [...prev, data as Message]);
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })

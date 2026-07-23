@@ -1,5 +1,5 @@
 {
-  "name": "bolt-expo-starter",
+  "name": "mail2date",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
@@ -46,6 +46,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/node": "^22.0.0",
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   }

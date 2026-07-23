@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,15 +11,16 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, MapPin, User, Calendar, Heart, ArrowRight } from 'lucide-react-native';
+import { Check, MapPin, User, Calendar, Heart, ArrowRight, Sparkles } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { INTEREST_TAGS } from '@/lib/constants';
 import { AppLogo } from '@/components/AppLogo';
+import { enhanceBioWithAI } from '@/lib/ai';
 import type { Profile } from '@/lib/types';
 
-const STEPS = ['name', 'age', 'prefs', 'location', 'interests'] as const;
+const STEPS = ['name', 'age', 'prefs', 'location', 'interests', 'bio'] as const;
 type Step = (typeof STEPS)[number];
 
 export default function OnboardingScreen() {
@@ -33,6 +34,9 @@ export default function OnboardingScreen() {
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [bio, setBio] = useState('');
+  const [aiBios, setAiBios] = useState<{ title: string; bio: string }[]>([]);
+  const [generatingAiBio, setGeneratingAiBio] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +90,13 @@ export default function OnboardingScreen() {
     );
   };
 
+  const handleGenerateAiBio = async () => {
+    setGeneratingAiBio(true);
+    const results = await enhanceBioWithAI(bio, selectedInterests);
+    setAiBios(results);
+    setGeneratingAiBio(false);
+  };
+
   const completeOnboarding = async () => {
     if (!user) return;
     setSaving(true);
@@ -99,6 +110,7 @@ export default function OnboardingScreen() {
       match_age_min: ageMin,
       match_age_max: ageMax,
       interests: selectedInterests,
+      bio: bio.trim(),
       onboarding_complete: true,
     });
     setSaving(false);
@@ -262,6 +274,80 @@ export default function OnboardingScreen() {
                 );
               })}
             </View>
+          </StepContainer>
+        )}
+
+        {step === 'bio' && (
+          <StepContainer
+            icon={<Sparkles size={28} color={Colors.primary} />}
+            title="Write your bio"
+            subtitle="Tell potential matches a little about yourself, or let Gemini AI help you craft a bio!"
+          >
+            <TextInput
+              style={[styles.textInput, { height: 110, textAlignVertical: 'top' }]}
+              placeholder="Schrijf hier je bio..."
+              placeholderTextColor={Colors.textTertiary}
+              value={bio}
+              onChangeText={setBio}
+              multiline
+              numberOfLines={4}
+            />
+
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: Colors.glass,
+                borderWidth: 1,
+                borderColor: Colors.glassBorder,
+                borderRadius: 14,
+                paddingVertical: 12,
+                marginTop: 14,
+              }}
+              onPress={handleGenerateAiBio}
+              disabled={generatingAiBio}
+            >
+              {generatingAiBio ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <>
+                  <Sparkles size={16} color={Colors.primary} />
+                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primary }}>
+                    ✨ Herschrijf / Genereer met AI
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {aiBios.length > 0 && (
+              <View style={{ marginTop: 16, gap: 10 }}>
+                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: Colors.textSecondary }}>
+                  Kies een AI optie:
+                </Text>
+                {aiBios.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={{
+                      backgroundColor: Colors.surfaceElevated,
+                      borderWidth: 1,
+                      borderColor: Colors.surfaceBorder,
+                      borderRadius: 14,
+                      padding: 12,
+                    }}
+                    onPress={() => setBio(item.bio)}
+                  >
+                    <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, color: Colors.primary, marginBottom: 4 }}>
+                      {item.title}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textPrimary }}>
+                      {item.bio}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </StepContainer>
         )}
 
