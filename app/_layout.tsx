@@ -20,14 +20,14 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === 'auth';
     const inOnboarding = segments[0] === 'onboarding';
-    const inTabs = segments[0] === '(tabs)';
+    const inMainApp = !inAuthGroup && !inOnboarding;
 
     if (!session) {
       if (!inAuthGroup) router.replace('/auth/landing');
     } else if (session && !profile?.onboarding_complete) {
       if (!inOnboarding) router.replace('/onboarding');
     } else if (session && profile?.onboarding_complete) {
-      if (!inTabs && !inAuthGroup) router.replace('/(tabs)');
+      if (!inMainApp) router.replace('/');
     }
   }, [session, profile, loading, segments]);
 

@@ -9,6 +9,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Compass, Search, Lock, Crown, Plus, MapPin, X } from 'lucide-react-native';
@@ -29,6 +30,9 @@ const GRID_IMAGES = [
 ];
 
 export default function DiscoverScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user, profile } = useAuth();
   const [posts, setPosts] = useState<DatePost[]>([]);
   const [gridProfiles, setGridProfiles] = useState<Profile[]>([]);
@@ -74,7 +78,7 @@ export default function DiscoverScreen() {
         .eq('is_banned', false)
         .gte('age', profile.match_age_min)
         .lte('age', profile.match_age_max)
-        .limit(12);
+        .limit(16);
       setGridProfiles((candidates as Profile[]) || []);
     }
 
@@ -125,7 +129,10 @@ export default function DiscoverScreen() {
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && { maxWidth: 720, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
@@ -143,7 +150,7 @@ export default function DiscoverScreen() {
         </View>
 
         <Text style={styles.pageTitle}>Ontdekken</Text>
-        <Text style={styles.pageSubtitle}>Discover people and date ideas nearby</Text>
+        <Text style={styles.pageSubtitle}>Ontdek mensen en date-ideeën in jouw buurt</Text>
 
         {/* Search */}
         <View style={styles.searchRow}>
@@ -151,7 +158,7 @@ export default function DiscoverScreen() {
             <Search size={18} color={Colors.textTertiary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search posts, interests, people..."
+              placeholder="Zoek berichten, interesses, mensen..."
               placeholderTextColor={Colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -167,7 +174,7 @@ export default function DiscoverScreen() {
           contentContainerStyle={styles.filtersContent}
         >
           <FilterChip
-            label="All"
+            label="Alles"
             active={activeFilter === 'all'}
             onPress={() => setActiveFilter('all')}
           />
@@ -182,31 +189,31 @@ export default function DiscoverScreen() {
           {/* Premium locked filter */}
           <View style={[styles.filterChip, styles.filterChipLocked]}>
             <Lock size={12} color={Colors.accent} />
-            <Text style={styles.filterChipLockedText}>Exact Radius</Text>
+            <Text style={styles.filterChipLockedText}>Exacte Zoekstraal</Text>
             <Crown size={12} color={Colors.accent} />
           </View>
         </ScrollView>
 
         {/* Activity Feed */}
-        <Text style={styles.sectionTitle}>Activity Feed</Text>
+        <Text style={styles.sectionTitle}>Activiteiten Feed</Text>
         {filteredPosts.length > 0 ? (
           filteredPosts.map((post) => <PostCard key={post.id} post={post} />)
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No posts yet</Text>
+            <Text style={styles.emptyTitle}>Nog geen berichten</Text>
             <Text style={styles.emptySubtitle}>
-              Be the first to post a date invitation in your area!
+              Wees de eerste die een date-uitnodiging in jouw regio plaatst!
             </Text>
           </View>
         )}
 
         {/* AI Interest Grid */}
         <View style={styles.gridSection}>
-          <Text style={styles.sectionTitle}>People Near You</Text>
-          <Text style={styles.gridSubtitle}>Sorted by AI affinity to your interests</Text>
+          <Text style={styles.sectionTitle}>Mensen in jouw buurt</Text>
+          <Text style={styles.gridSubtitle}>Gefilterd op AI-affiniteit met jouw interesses</Text>
           <View style={styles.grid}>
             {gridProfiles.map((p, idx) => (
-              <GridCard key={p.id} profile={p} index={idx} />
+              <GridCard key={p.id} profile={p} index={idx} isTablet={isTablet} />
             ))}
           </View>
         </View>
@@ -218,9 +225,9 @@ export default function DiscoverScreen() {
             style={styles.premiumTeaserInner}
           >
             <Crown size={24} color={Colors.accent} />
-            <Text style={styles.premiumTeaserTitle}>Unlock Mail2Date+</Text>
+            <Text style={styles.premiumTeaserTitle}>Ontgrendel Mail2Date+</Text>
             <Text style={styles.premiumTeaserText}>
-              Advanced AI filters, exact travel radius, and exclusive B2B vouchers.
+              Geavanceerde AI-filters, exacte zoekstraal en exclusieve partner-vouchers.
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -277,10 +284,10 @@ function PostCard({ post }: { post: DatePost }) {
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.postName}>{p?.first_name || 'Anonymous'}, {p?.age}</Text>
+          <Text style={styles.postName}>{p?.first_name || 'Anoniem'}, {p?.age}</Text>
           <View style={styles.postMeta}>
             <MapPin size={10} color={Colors.textTertiary} />
-            <Text style={styles.postMetaText}>{post.location || p?.city || 'Unknown'}</Text>
+            <Text style={styles.postMetaText}>{post.location || p?.city || 'Onbekend'}</Text>
             <Text style={styles.postDot}> • </Text>
             <Text style={styles.postMetaText}>{formatTime(post.created_at)}</Text>
           </View>
@@ -302,17 +309,16 @@ function PostCard({ post }: { post: DatePost }) {
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.postActionBtn}>
           <Compass size={16} color={Colors.primary} />
-          <Text style={styles.postActionText}>Connect</Text>
+          <Text style={styles.postActionText}>Reageren</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function GridCard({ profile, index }: { profile: Profile; index: number }) {
-  const sharedCount = 0; // would compute from current user's interests
+function GridCard({ profile, index, isTablet }: { profile: Profile; index: number; isTablet: boolean }) {
   return (
-    <View style={styles.gridCard}>
+    <View style={[styles.gridCard, isTablet && styles.gridCardTablet]}>
       <Image
         source={{
           uri: profile.photo_url ||
@@ -327,7 +333,7 @@ function GridCard({ profile, index }: { profile: Profile; index: number }) {
       />
       <View style={styles.gridCardInfo}>
         <Text style={styles.gridCardName}>{profile.first_name}, {profile.age}</Text>
-        <Text style={styles.gridCardCity}>{profile.city}</Text>
+        <Text style={styles.gridCardCity}>{profile.city || 'Nederland'}</Text>
       </View>
       <View style={styles.gridCardScore}>
         <Text style={styles.gridCardScoreText}>{75 + (index % 20)}%</Text>
@@ -359,14 +365,14 @@ function CreatePostModal({
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Create Date Invitation</Text>
+          <Text style={styles.modalTitle}>Plaats Date Uitnodiging</Text>
           <TouchableOpacity onPress={onClose} style={styles.modalCloseBtn}>
             <X size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
         <TextInput
           style={styles.modalInput}
-          placeholder="What's your date idea? (e.g. 'Who wants to grab a flat white and check out the new exhibit this Saturday?')"
+          placeholder="Wat is jouw date-idee? (bijv. 'Zin om zaterdag samen een bakkie te doen in het centrum?')"
           placeholderTextColor={Colors.textTertiary}
           value={content}
           onChangeText={onContentChange}
@@ -376,12 +382,12 @@ function CreatePostModal({
         />
         <TextInput
           style={styles.modalInput}
-          placeholder="Location (e.g. Amsterdam De Pijp)"
+          placeholder="Locatie (bijv. Amsterdam Centrum)"
           placeholderTextColor={Colors.textTertiary}
           value={location}
           onChangeText={onLocationChange}
         />
-        <Text style={styles.modalLabel}>Date Type</Text>
+        <Text style={styles.modalLabel}>Type Date</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           {DATE_TYPES.map((dt) => (
             <TouchableOpacity
@@ -401,7 +407,7 @@ function CreatePostModal({
           ))}
         </ScrollView>
         <TouchableOpacity style={styles.modalSubmitBtn} onPress={onSubmit} activeOpacity={0.85}>
-          <Text style={styles.modalSubmitText}>Post Invitation</Text>
+          <Text style={styles.modalSubmitText}>Plaats Uitnodiging</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -412,10 +418,10 @@ function formatTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diff = (now.getTime() - d.getTime()) / 1000;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return 'zojuist';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m geleden`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}u geleden`;
+  return `${Math.floor(diff / 86400)}d geleden`;
 }
 
 const styles = StyleSheet.create({
@@ -582,6 +588,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+  gridCardTablet: {
+    minWidth: '31%',
+    maxWidth: '31%',
+  },
   gridCardImage: { width: '100%', height: '100%' },
   gridCardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
   gridCardInfo: { position: 'absolute', bottom: 12, left: 12 },
@@ -630,6 +640,9 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
+    maxWidth: 560,
+    alignSelf: 'center',
+    width: '100%',
   },
   modalHeader: {
     flexDirection: 'row',

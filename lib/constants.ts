@@ -1,39 +1,39 @@
 export const INTEREST_TAGS = [
   'Specialty Coffee',
-  'Indie Cinema',
-  'Board Games',
+  'Indie Films',
+  'Bordspellen',
   'Fine Dining',
-  'Hiking',
+  'Wandelen',
   'Yoga',
-  'Photography',
-  'Vinyl Records',
-  'Craft Beer',
-  'Wine Tasting',
-  'Book Clubs',
-  'Live Music',
-  'Art Galleries',
-  'Cooking',
-  'Cycling',
-  'Running',
-  'Museums',
+  'Fotografie',
+  'Vinyl Platen',
+  'Speciaalbier',
+  'Wijnproeverij',
+  'Boekenclub',
+  'Live Muziek',
+  'Kunstgaleries',
+  'Koken',
+  'Wielrennen',
+  'Hardlopen',
+  'Musea',
   'Theater',
-  'Baking',
-  'Travel',
+  'Bakken',
+  'Reizen',
   'Gaming',
-  'Pottery',
-  'Sustainability',
-  'Philosophy',
+  'Keramiek & Pottenbakken',
+  'Duurzaamheid',
+  'Filosofie',
 ] as const;
 
 export const DATE_TYPES = [
-  { id: 'coffee', label: 'Coffee', icon: 'Coffee' },
-  { id: 'cinema', label: 'Cinema', icon: 'Film' },
-  { id: 'dinner', label: 'Dinner', icon: 'UtensilsCrossed' },
-  { id: 'walk', label: 'Walk', icon: 'Trees' },
+  { id: 'coffee', label: 'Koffie', icon: 'Coffee' },
+  { id: 'cinema', label: 'Bioscoop', icon: 'Film' },
+  { id: 'dinner', label: 'Diner', icon: 'UtensilsCrossed' },
+  { id: 'walk', label: 'Wandeling', icon: 'Trees' },
   { id: 'museum', label: 'Museum', icon: 'Landmark' },
-  { id: 'drinks', label: 'Drinks', icon: 'Wine' },
-  { id: 'activity', label: 'Activity', icon: 'Gamepad2' },
-  { id: 'food', label: 'Food', icon: 'Croissant' },
+  { id: 'drinks', label: 'Borrel', icon: 'Wine' },
+  { id: 'activity', label: 'Activiteit', icon: 'Gamepad2' },
+  { id: 'food', label: 'Eten', icon: 'Croissant' },
 ] as const;
 
 export const DATE_VENUES = [
@@ -50,13 +50,13 @@ export const DATE_VENUES = [
 ];
 
 export const SAMPLE_ICEBREAKERS = [
-  "So you're into {interest} too — what's your favorite spot in the city for that?",
-  "I noticed we both love {interest}. Bold take: best place in town for it?",
-  "Since we share {interest}, I have to ask: what got you into it?",
+  "Zo te zien houd jij ook van {interest} — wat is jouw favoriete plek daarvoor in de stad?",
+  "Ik zag dat we allebei een passie hebben voor {interest}. Eerlijke mening: waar moet ik echt een keer heen?",
+  "Omdat we allebei van {interest} houden moet ik het vragen: hoe is die passie bij jou ontstaan?",
 ];
 
 export const SAFETY_RESOURCES = [
-  { label: '112 (Emergency)', number: '112' },
+  { label: '112 (Noodnummer)', number: '112' },
   { label: 'Slachtofferhulp Nederland', number: '0900-0101' },
   { label: 'Centrum Seksueel Geweld', number: '0800-0188' },
 ];

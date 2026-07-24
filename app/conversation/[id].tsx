@@ -10,20 +10,21 @@ import {
   Platform,
   Image,
   ActivityIndicator,
-  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Send, Lock, Unlock, Sparkles, Shield, Phone, Heart } from 'lucide-react-native';
+import { ArrowLeft, Send, Lock, Unlock, Sparkles, Shield } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { Message, Profile, Conversation } from '@/lib/types';
-import { SAMPLE_ICEBREAKERS, SAFETY_RESOURCES } from '@/lib/constants';
 import { generateAIChatIcebreakers } from '@/lib/ai';
-import { useRouter } from 'expo-router';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function ConversationScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
@@ -64,7 +65,7 @@ export default function ConversationScreen() {
         .maybeSingle();
       setOtherProfile(prof as Profile);
 
-      // Generate AI icebreakers based on shared interests & Gemini Flash
+      // Generate AI icebreakers based on shared interests & Gemini
       if (prof && user) {
         const { data: myProfile } = await supabase
           .from('profiles')
@@ -177,123 +178,125 @@ export default function ConversationScreen() {
 
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <View style={styles.headerAvatar}>
-            {photoGranted && otherGranted && otherProfile?.photo_url ? (
-              <Image source={{ uri: otherProfile.photo_url }} style={styles.headerAvatarImage} />
-            ) : (
-              <View style={styles.headerAvatarPlaceholder}>
-                <Lock size={14} color={Colors.textTertiary} />
-              </View>
-            )}
-          </View>
-          <View>
-            <Text style={styles.headerName}>
-              {otherProfile?.first_name || 'Unknown'}, {otherProfile?.age}
-            </Text>
-            <Text style={styles.headerStatus}>
-              {photoGranted && otherGranted ? 'Photos unlocked' : 'Photos locked'}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.safetyBtn} onPress={() => router.push('/safety')}>
-          <Shield size={18} color={Colors.success} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Photo permission banner */}
-      <PhotoPermissionBanner
-        photoGranted={photoGranted}
-        otherGranted={otherGranted}
-        onToggle={togglePhotoAccess}
-      />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={90}
-      >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={styles.messagesContainer}
-          onContentSizeChange={() =>
-            scrollViewRef.current?.scrollToEnd({ animated: true })
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.length === 0 ? (
-            <View style={styles.emptyMessages}>
-              <Text style={styles.emptyMessagesText}>Say hello to start the conversation</Text>
+      <View style={[styles.mainWrapper, isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <View style={styles.headerAvatar}>
+              {photoGranted && otherGranted && otherProfile?.photo_url ? (
+                <Image source={{ uri: otherProfile.photo_url }} style={styles.headerAvatarImage} />
+              ) : (
+                <View style={styles.headerAvatarPlaceholder}>
+                  <Lock size={14} color={Colors.textTertiary} />
+                </View>
+              )}
             </View>
-          ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={msg.sender_id === user?.id}
-              />
-            ))
-          )}
-        </ScrollView>
-
-        {/* Icebreaker section */}
-        {showIcebreakers && (
-          <View style={styles.icebreakerContainer}>
-            <Text style={styles.icebreakerTitle}>AI Icebreakers</Text>
-            <Text style={styles.icebreakerSubtitle}>
-              Based on your shared interests
-            </Text>
-            {icebreakers.map((ib, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={styles.icebreakerItem}
-                onPress={() => useIcebreaker(ib)}
-              >
-                <Sparkles size={14} color={Colors.primary} />
-                <Text style={styles.icebreakerItemText}>{ib}</Text>
-              </TouchableOpacity>
-            ))}
+            <View>
+              <Text style={styles.headerName}>
+                {otherProfile?.first_name || 'Onbekend'}, {otherProfile?.age}
+              </Text>
+              <Text style={styles.headerStatus}>
+                {photoGranted && otherGranted ? "Foto's ontgrendeld" : "Foto's afgeschermd"}
+              </Text>
+            </View>
           </View>
-        )}
-
-        {/* Input bar */}
-        <View style={styles.inputBar}>
-          <TouchableOpacity
-            style={styles.icebreakerBtn}
-            onPress={() => setShowIcebreakers(!showIcebreakers)}
-          >
-            <Sparkles size={20} color={showIcebreakers ? Colors.primary : Colors.textTertiary} />
-          </TouchableOpacity>
-          <View style={styles.inputWrap}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message..."
-              placeholderTextColor={Colors.textTertiary}
-              value={input}
-              onChangeText={setInput}
-              multiline
-              maxLength={500}
-            />
-          </View>
-          <TouchableOpacity
-            style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
-            onPress={sendMessage}
-            disabled={!input.trim() || sending}
-            activeOpacity={0.85}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color={Colors.textInverse} />
-            ) : (
-              <Send size={18} color={Colors.textInverse} />
-            )}
+          <TouchableOpacity style={styles.safetyBtn} onPress={() => router.push('/safety')}>
+            <Shield size={18} color={Colors.success} />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Photo permission banner */}
+        <PhotoPermissionBanner
+          photoGranted={photoGranted}
+          otherGranted={otherGranted}
+          onToggle={togglePhotoAccess}
+        />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={90}
+        >
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.messagesContainer}
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: true })
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            {messages.length === 0 ? (
+              <View style={styles.emptyMessages}>
+                <Text style={styles.emptyMessagesText}>Zeg hallo om het gesprek te starten</Text>
+              </View>
+            ) : (
+              messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isOwn={msg.sender_id === user?.id}
+                />
+              ))
+            )}
+          </ScrollView>
+
+          {/* Icebreaker section */}
+          {showIcebreakers && (
+            <View style={styles.icebreakerContainer}>
+              <Text style={styles.icebreakerTitle}>AI Openingszinnen</Text>
+              <Text style={styles.icebreakerSubtitle}>
+                Gebaseerd op jullie gedeelde interesses
+              </Text>
+              {icebreakers.map((ib, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.icebreakerItem}
+                  onPress={() => useIcebreaker(ib)}
+                >
+                  <Sparkles size={14} color={Colors.primary} />
+                  <Text style={styles.icebreakerItemText}>{ib}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Input bar */}
+          <View style={styles.inputBar}>
+            <TouchableOpacity
+              style={styles.icebreakerBtn}
+              onPress={() => setShowIcebreakers(!showIcebreakers)}
+            >
+              <Sparkles size={20} color={showIcebreakers ? Colors.primary : Colors.textTertiary} />
+            </TouchableOpacity>
+            <View style={styles.inputWrap}>
+              <TextInput
+                style={styles.input}
+                placeholder="Typ een bericht..."
+                placeholderTextColor={Colors.textTertiary}
+                value={input}
+                onChangeText={setInput}
+                multiline
+                maxLength={500}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
+              onPress={sendMessage}
+              disabled={!input.trim() || sending}
+              activeOpacity={0.85}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color={Colors.textInverse} />
+              ) : (
+                <Send size={18} color={Colors.textInverse} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </LinearGradient>
   );
 }
@@ -316,20 +319,20 @@ function PhotoPermissionBanner({
         ) : (
           <Lock size={18} color={Colors.warning} />
         )}
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.photoBannerTitle}>
             {bothGranted
-              ? 'Photos unlocked'
+              ? "Foto's ontgrendeld"
               : photoGranted
-              ? "Waiting for their permission"
-              : 'Photos are private by default'}
+              ? 'Wachten op toestemming van de ander'
+              : "Foto's zijn standaard privé"}
           </Text>
           <Text style={styles.photoBannerSubtitle}>
             {bothGranted
-              ? 'You can both see each other\'s photos now.'
+              ? "Jullie kunnen nu elkaars foto's bekijken."
               : photoGranted
-              ? 'You\'ve granted access. They haven\'t yet.'
-              : 'Both must grant access before photos are shared.'}
+              ? 'Jij hebt toegang gegeven. De ander nog niet.'
+              : "Beide personen moeten toestemming geven voordat foto's gedeeld worden."}
           </Text>
         </View>
       </View>
@@ -341,8 +344,8 @@ function PhotoPermissionBanner({
         onPress={onToggle}
         activeOpacity={0.85}
       >
-        <Text style={styles.photoToggleText}>
-          {photoGranted ? 'Revoke' : 'Grant Access'}
+        <Text style={[styles.photoToggleText, photoGranted ? { color: Colors.textPrimary } : {}]}>
+          {photoGranted ? 'Intrekken' : 'Toegang Geven'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -364,11 +367,12 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  mainWrapper: { flex: 1 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',

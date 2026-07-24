@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,13 +19,16 @@ import { useAuth } from '@/lib/auth';
 import { INTEREST_TAGS } from '@/lib/constants';
 import { AppLogo } from '@/components/AppLogo';
 import { enhanceBioWithAI } from '@/lib/ai';
-import type { Profile } from '@/lib/types';
+import { AgeRangeSlider } from '@/components/AgeRangeSlider';
 
 const STEPS = ['name', 'age', 'prefs', 'location', 'interests', 'bio'] as const;
 type Step = (typeof STEPS)[number];
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user, refreshProfile } = useAuth();
   const [step, setStep] = useState<Step>('name');
   const [firstName, setFirstName] = useState('');
@@ -59,22 +63,22 @@ export default function OnboardingScreen() {
 
   const validate = (): boolean => {
     if (step === 'name' && !firstName.trim()) {
-      setError('Please enter your first name.');
+      setError('Vul AUB je voornaam in.');
       return false;
     }
     if (step === 'age') {
       const a = parseInt(age, 10);
       if (!a || a < 18 || a > 99) {
-        setError('You must be 18 or older.');
+        setError('Je moet 18 jaar of ouder zijn om de app te gebruiken.');
         return false;
       }
     }
     if (step === 'location' && (!city.trim() || !postalCode.trim())) {
-      setError('Please enter your city and postal code.');
+      setError('Vul AUB je stad en postcode in.');
       return false;
     }
     if (step === 'interests' && selectedInterests.length < 3) {
-      setError('Select at least 3 interests.');
+      setError('Kies ten minste 3 interesses.');
       return false;
     }
     return true;
@@ -115,11 +119,22 @@ export default function OnboardingScreen() {
     });
     setSaving(false);
     if (upsertError) {
+      if (
+        upsertError.message.includes('foreign key constraint') ||
+        upsertError.message.includes('profiles_id_fkey')
+      ) {
+        await supabase.auth.signOut();
+        Alert.alert(
+          'Sessie Verlopen',
+          'Je account-gegevens konden niet opgeslagen worden. Meld je AUB opnieuw aan met je e-mailadres.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/landing') }]
+        );
+        return;
+      }
       setError(upsertError.message);
       return;
     }
     await refreshProfile();
-    router.replace('/(tabs)');
   };
 
   return (
@@ -127,15 +142,15 @@ export default function OnboardingScreen() {
       colors={[Colors.background, Colors.surface]}
       style={styles.container}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, isTablet && styles.tabletHeader]}>
         <AppLogo size={36} showText={false} />
         <View style={styles.progressContainer}>
-          {STEPS.map((s, i) => (
+          {STEPS.map((s, idx) => (
             <View
               key={s}
               style={[
                 styles.progressDot,
-                i <= stepIndex ? styles.progressDotActive : {},
+                idx <= stepIndex ? styles.progressDotActive : {},
               ]}
             />
           ))}
@@ -143,19 +158,21 @@ export default function OnboardingScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && { maxWidth: 640, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         {step === 'name' && (
           <StepContainer
             icon={<User size={28} color={Colors.primary} />}
-            title="What should we call you?"
-            subtitle="First name only. We never ask for your last name — your privacy comes first."
+            title="Hoe mogen we je noemen?"
+            subtitle="Alleen je voornaam. We vragen nooit om je achternaam — jouw privacy staat voorop."
           >
             <TextInput
               style={styles.textInput}
-              placeholder="First name"
+              placeholder="Voornaam"
               placeholderTextColor={Colors.textTertiary}
               value={firstName}
               onChangeText={setFirstName}
@@ -169,8 +186,8 @@ export default function OnboardingScreen() {
         {step === 'age' && (
           <StepContainer
             icon={<Calendar size={28} color={Colors.primary} />}
-            title="How old are you?"
-            subtitle="Your exact age helps us match you with people in your preferred range."
+            title="Hoe oud ben je?"
+            subtitle="Je leeftijd helpt ons om de beste matches in jouw gewenste categorie te vinden."
           >
             <TextInput
               style={[styles.textInput, { textAlign: 'center', fontSize: 28 }]}
@@ -188,30 +205,20 @@ export default function OnboardingScreen() {
         {step === 'prefs' && (
           <StepContainer
             icon={<Heart size={28} color={Colors.primary} />}
-            title="What age range are you interested in?"
-            subtitle="Drag the sliders to set your preferred match range."
+            title="Naar welke leeftijd zoek je?"
+            subtitle="Pas de interactieve leeftijds-range slider aan naar jouw persoonlijke voorkeur."
           >
-            <View style={styles.sliderContainer}>
-              <View style={styles.sliderLabels}>
-                <Text style={styles.sliderValue}>{ageMin}</Text>
-                <Text style={styles.sliderValue}>{ageMax}</Text>
-              </View>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>Min: </Text>
-                <Stepper
-                  value={ageMin}
-                  onDecrement={() => setAgeMin((v) => Math.max(18, v - 1))}
-                  onIncrement={() => setAgeMin((v) => Math.min(ageMax - 1, v + 1))}
-                />
-              </View>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>Max: </Text>
-                <Stepper
-                  value={ageMax}
-                  onDecrement={() => setAgeMax((v) => Math.max(ageMin + 1, v - 1))}
-                  onIncrement={() => setAgeMax((v) => Math.min(99, v + 1))}
-                />
-              </View>
+            <View style={styles.sliderCard}>
+              <AgeRangeSlider
+                min={18}
+                max={99}
+                valueMin={ageMin}
+                valueMax={ageMax}
+                onChange={(newMin, newMax) => {
+                  setAgeMin(newMin);
+                  setAgeMax(newMax);
+                }}
+              />
             </View>
           </StepContainer>
         )}
@@ -219,12 +226,12 @@ export default function OnboardingScreen() {
         {step === 'location' && (
           <StepContainer
             icon={<MapPin size={28} color={Colors.primary} />}
-            title="Where are you based?"
-            subtitle="We use this for local matchmaking. We never share your exact address."
+            title="Waar woon je?"
+            subtitle="Dit gebruiken we voor lokale matchmaking. Je exacte adres wordt nooit gedeeld."
           >
             <TextInput
               style={styles.textInput}
-              placeholder="City (e.g. Amsterdam)"
+              placeholder="Stad (bijv. Amsterdam)"
               placeholderTextColor={Colors.textTertiary}
               value={city}
               onChangeText={setCity}
@@ -233,7 +240,7 @@ export default function OnboardingScreen() {
             <View style={{ height: 12 }} />
             <TextInput
               style={styles.textInput}
-              placeholder="Postal code (e.g. 1011 AB)"
+              placeholder="Postcode (bijv. 1011 AB)"
               placeholderTextColor={Colors.textTertiary}
               value={postalCode}
               onChangeText={setPostalCode}
@@ -245,8 +252,8 @@ export default function OnboardingScreen() {
         {step === 'interests' && (
           <StepContainer
             icon={<Heart size={28} color={Colors.primary} />}
-            title="What are you into?"
-            subtitle="Pick at least 3. These power your AI matches and date ideas."
+            title="Wat zijn jouw interesses?"
+            subtitle="Kies er ten minste 3. Hiermee genereert onze AI jouw perfecte matches en date-ideeën."
           >
             <View style={styles.interestGrid}>
               {INTEREST_TAGS.map((tag) => {
@@ -280,8 +287,8 @@ export default function OnboardingScreen() {
         {step === 'bio' && (
           <StepContainer
             icon={<Sparkles size={28} color={Colors.primary} />}
-            title="Write your bio"
-            subtitle="Tell potential matches a little about yourself, or let Gemini AI help you craft a bio!"
+            title="Schrijf je bio"
+            subtitle="Vertel wat leuks over jezelf, of laat Gemini AI een pakkende bio voor je schrijven!"
           >
             <TextInput
               style={[styles.textInput, { height: 110, textAlignVertical: 'top' }]}
@@ -294,18 +301,7 @@ export default function OnboardingScreen() {
             />
 
             <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                backgroundColor: Colors.glass,
-                borderWidth: 1,
-                borderColor: Colors.glassBorder,
-                borderRadius: 14,
-                paddingVertical: 12,
-                marginTop: 14,
-              }}
+              style={styles.aiBioBtn}
               onPress={handleGenerateAiBio}
               disabled={generatingAiBio}
             >
@@ -314,7 +310,7 @@ export default function OnboardingScreen() {
               ) : (
                 <>
                   <Sparkles size={16} color={Colors.primary} />
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primary }}>
+                  <Text style={styles.aiBioBtnText}>
                     ✨ Herschrijf / Genereer met AI
                   </Text>
                 </>
@@ -329,19 +325,13 @@ export default function OnboardingScreen() {
                 {aiBios.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
-                    style={{
-                      backgroundColor: Colors.surfaceElevated,
-                      borderWidth: 1,
-                      borderColor: Colors.surfaceBorder,
-                      borderRadius: 14,
-                      padding: 12,
-                    }}
+                    style={styles.aiCard}
                     onPress={() => setBio(item.bio)}
                   >
-                    <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, color: Colors.primary, marginBottom: 4 }}>
+                    <Text style={styles.aiCardTitle}>
                       {item.title}
                     </Text>
-                    <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textPrimary }}>
+                    <Text style={styles.aiCardText}>
                       {item.bio}
                     </Text>
                   </TouchableOpacity>
@@ -354,10 +344,10 @@ export default function OnboardingScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isTablet && { maxWidth: 640, alignSelf: 'center', width: '100%' }]}>
         {stepIndex > 0 && (
           <TouchableOpacity style={styles.backButton} onPress={back}>
-            <Text style={styles.backButtonText}>Back</Text>
+            <Text style={styles.backButtonText}>Terug</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -371,7 +361,7 @@ export default function OnboardingScreen() {
           ) : (
             <>
               <Text style={styles.nextButtonText}>
-                {stepIndex === STEPS.length - 1 ? 'Finish' : 'Continue'}
+                {stepIndex === STEPS.length - 1 ? 'Afronden' : 'Volgende'}
               </Text>
               <ArrowRight size={20} color={Colors.textInverse} />
             </>
@@ -403,28 +393,6 @@ function StepContainer({
   );
 }
 
-function Stepper({
-  value,
-  onDecrement,
-  onIncrement,
-}: {
-  value: number;
-  onDecrement: () => void;
-  onIncrement: () => void;
-}) {
-  return (
-    <View style={styles.stepper}>
-      <TouchableOpacity style={styles.stepperBtn} onPress={onDecrement}>
-        <Text style={styles.stepperBtnText}>−</Text>
-      </TouchableOpacity>
-      <Text style={styles.stepperValue}>{value}</Text>
-      <TouchableOpacity style={styles.stepperBtn} onPress={onIncrement}>
-        <Text style={styles.stepperBtnText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -434,6 +402,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 12,
+  },
+  tabletHeader: {
+    maxWidth: 640,
+    alignSelf: 'center',
+    width: '100%',
   },
   progressContainer: { flexDirection: 'row', gap: 6 },
   progressDot: {
@@ -482,60 +455,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
-  sliderContainer: {
+  sliderCard: {
     backgroundColor: Colors.surfaceElevated,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    padding: 20,
-  },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  sliderValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 32,
-    color: Colors.primary,
-  },
-  sliderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  sliderLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  stepperBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 22,
-    color: Colors.textPrimary,
-  },
-  stepperValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 22,
-    color: Colors.textPrimary,
-    minWidth: 30,
-    textAlign: 'center',
+    padding: 16,
   },
   interestGrid: {
     flexDirection: 'row',
@@ -566,6 +491,28 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
     fontWeight: '600',
   },
+  aiBioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.glass,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  aiBioBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primary },
+  aiCard: {
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    borderRadius: 14,
+    padding: 12,
+  },
+  aiCardTitle: { fontFamily: 'Inter-Bold', fontSize: 12, color: Colors.primary, marginBottom: 4 },
+  aiCardText: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textPrimary },
   errorText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Crown, Check, Zap, Filter, Ticket } from 'lucide-react-native';
@@ -18,60 +19,64 @@ import { useRouter } from 'expo-router';
 const PREMIUM_FEATURES = [
   {
     icon: Zap,
-    title: 'Top 10 Date Ideas',
-    description: 'Expand your daily suggestions from Top 3 to Top 10 curated date ideas.',
+    title: 'Top 10 Date-Ideeën',
+    description: 'Breid je dagelijkse suggesties uit van Top 3 naar Top 10 geselecteerde date-ideeën.',
   },
   {
     icon: Crown,
-    title: 'Instant Match Reset',
-    description: 'Reset your "Match of the Day" timer on demand — no waiting required.',
+    title: 'Direct Match Resetten',
+    description: 'Reset je "Match van de Dag" timer wanneer je wilt — zonder wachttijd.',
   },
   {
     icon: Filter,
-    title: 'Advanced AI Filters',
-    description: 'Deep interest matching and exact travel radius filters on Discover.',
+    title: 'Geavanceerde AI Filters',
+    description: 'Diepere interesse-matching en exacte zoekstraal-filters op de Ontdekken pagina.',
   },
   {
     icon: Ticket,
-    title: 'Exclusive B2B Vouchers',
-    description: '2-for-1 Pathé tickets, 10% off partner restaurants, and more local deals.',
+    title: 'Exclusieve Partner Vouchers',
+    description: '2e kaartje gratis bij Pathé, 10% korting bij partner-restaurants en meer lokale deals.',
   },
 ];
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async () => {
     if (!user) return;
     setLoading(true);
-    // In production, this would integrate with RevenueCat for mobile subscriptions
-    // For now, we'll just update the profile
     const { error } = await supabase
       .from('profiles')
       .update({ is_premium: true })
       .eq('id', user.id);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', 'Could not process subscription. Please try again.');
+      Alert.alert('Fout', 'Abonnement kon niet worden verwerkt. Probeer het opnieuw.');
       return;
     }
     await refreshProfile();
-    Alert.alert('Welcome to Mail2Date+', 'You now have access to all premium features!');
+    Alert.alert('Welkom bij Mail2Date+!', 'Je hebt nu toegang tot alle premium functies!');
     router.back();
   };
 
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroSection}>
@@ -83,8 +88,7 @@ export default function PremiumScreen() {
           </LinearGradient>
           <Text style={styles.title}>Mail2Date+</Text>
           <Text style={styles.subtitle}>
-            Premium features for a better dating experience. No pay-to-win — just more
-            convenience and access.
+            Premium functies voor een nog betere dating ervaring. Geen pay-to-win — gewoon meer gemak en mogelijkheden.
           </Text>
         </View>
 
@@ -107,8 +111,8 @@ export default function PremiumScreen() {
 
         <View style={styles.pricingCard}>
           <Text style={styles.pricingAmount}>€9.99</Text>
-          <Text style={styles.pricingPeriod}>per month</Text>
-          <Text style={styles.pricingNote}>Cancel anytime. No hidden fees.</Text>
+          <Text style={styles.pricingPeriod}>per maand</Text>
+          <Text style={styles.pricingNote}>Zonder verplichtingen. Maandelijks opzegbaar.</Text>
         </View>
 
         <TouchableOpacity
@@ -122,7 +126,7 @@ export default function PremiumScreen() {
           ) : (
             <>
               <Crown size={20} color={Colors.textInverse} />
-              <Text style={styles.subscribeBtnText}>Subscribe to Mail2Date+</Text>
+              <Text style={styles.subscribeBtnText}>Neem Mail2Date+</Text>
             </>
           )}
         </TouchableOpacity>
@@ -130,8 +134,7 @@ export default function PremiumScreen() {
         <View style={styles.fairPlayBanner}>
           <Check size={16} color={Colors.success} />
           <Text style={styles.fairPlayText}>
-            100% Fair Play. No Date Boosts, no Spotlight, no paid visibility. Everyone gets an
-            equal chance at love.
+            100% Eerlijk. Geen betaalde boosts, geen voordelen bij zichtbaarheid. Iedereen krijgt een gelijke kans op de liefde.
           </Text>
         </View>
       </ScrollView>

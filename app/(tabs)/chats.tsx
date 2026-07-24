@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageCircle, Lock, Shield } from 'lucide-react-native';
@@ -19,6 +20,9 @@ import { AppLogo } from '@/components/AppLogo';
 import { useRouter } from 'expo-router';
 
 export default function ChatsScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -78,16 +82,18 @@ export default function ChatsScreen() {
 
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
         <AppLogo size={36} showText={false} />
         <View style={styles.privacyBadge}>
           <Shield size={14} color={Colors.success} />
-          <Text style={styles.privacyBadgeText}>Private</Text>
+          <Text style={styles.privacyBadgeText}>Privé</Text>
         </View>
       </View>
 
-      <Text style={styles.pageTitle}>Chats</Text>
-      <Text style={styles.pageSubtitle}>Your secure conversations</Text>
+      <View style={[isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
+        <Text style={styles.pageTitle}>Chats</Text>
+        <Text style={styles.pageSubtitle}>Jouw beveiligde gesprekken</Text>
+      </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -95,7 +101,10 @@ export default function ChatsScreen() {
         </View>
       ) : conversations.length > 0 ? (
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
@@ -120,9 +129,9 @@ export default function ChatsScreen() {
           <View style={styles.emptyIcon}>
             <MessageCircle size={32} color={Colors.textTertiary} />
           </View>
-          <Text style={styles.emptyTitle}>No chats yet</Text>
+          <Text style={styles.emptyTitle}>Nog geen chats</Text>
           <Text style={styles.emptySubtitle}>
-            Accept a match or connect with someone in Discover to start chatting.
+            Accepteer een match of reageer op iemand op Ontdekken om te beginnen met chatten.
           </Text>
         </View>
       )}
@@ -164,13 +173,13 @@ function ChatListItem({
       </View>
       <View style={styles.chatInfo}>
         <View style={styles.chatHeaderRow}>
-          <Text style={styles.chatName}>{p?.first_name || 'Unknown'}, {p?.age}</Text>
+          <Text style={styles.chatName}>{p?.first_name || 'Onbekend'}, {p?.age}</Text>
           <Text style={styles.chatTime}>
             {lastMsg ? formatTime(lastMsg.created_at) : ''}
           </Text>
         </View>
         <Text style={styles.chatPreview} numberOfLines={1}>
-          {lastMsg?.content || 'Say hello to start the conversation'}
+          {lastMsg?.content || 'Zeg hallo om het gesprek te starten'}
         </Text>
       </View>
       {lastMsg && !lastMsg.is_read && lastMsg.sender_id !== currentUserId && (
@@ -184,10 +193,10 @@ function formatTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diff = (now.getTime() - d.getTime()) / 1000;
-  if (diff < 60) return 'now';
+  if (diff < 60) return 'zojuist';
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return d.toLocaleDateString('en', { day: 'numeric', month: 'short' });
+  if (diff < 86400) return `${Math.floor(diff / 3600)}u`;
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
 }
 
 const styles = StyleSheet.create({

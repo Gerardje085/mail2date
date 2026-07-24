@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import type { Profile } from './types';
 
@@ -48,7 +49,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    const handleDeepLink = async (url: string | null) => {
+      if (!url) return;
+      // Handle hash/fragment or query params from magic links
+      let accessToken = '';
+      let refreshToken = '';
+
+      if (url.includes('#')) {
+        const hash = url.split('#')[1];
+        const params = new URLSearchParams(hash);
+        accessToken = params.get('access_token') || '';
+        refreshToken = params.get('refresh_token') || '';
+      } else {
+        const parsed = Linking.parse(url);
+        accessToken = (parsed.queryParams?.access_token as string) || '';
+        refreshToken = (parsed.queryParams?.refresh_token as string) || '';
+      }
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+      }
+    };
+
+    Linking.getInitialURL().then(handleDeepLink);
+    const linkSub = Linking.addEventListener('url', (evt) => handleDeepLink(evt.url));
+
+    return () => {
+      sub.subscription.unsubscribe();
+      linkSub.remove();
+    };
   }, []);
 
   const loadProfile = async (userId: string) => {

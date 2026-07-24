@@ -7,8 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Linking,
-  Alert,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Shield, Phone, Heart, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
@@ -21,20 +21,22 @@ import { useRouter } from 'expo-router';
 type Severity = 'safe' | 'medium' | 'high';
 
 const HIGH_SEVERITY_KEYWORDS = [
-  'assault', 'attack', 'hit', 'hurt', 'forced', 'rape', 'sexual', 'abuse',
-  'threat', 'scared', 'afraid', 'unsafe', 'danger', 'police', 'violent',
-  'aggressive', 'intimidat', 'harass', 'stalker', 'creepy', 'drugged',
-  'touched', 'grabbed', 'wouldn\'t stop', 'no means no',
+  'aanranding', 'geweld', 'geslagen', 'pijn', 'geforceerd', 'verkracht', 'seksueel', 'misbruik',
+  'bedreiging', 'bang', 'gevaar', 'politie', 'agressief', 'intimidatie', 'stalker', 'gedrogeerd',
+  'aanraken', 'nee is nee', 'assault', 'attack', 'hit', 'hurt', 'forced', 'rape', 'threat', 'unsafe',
 ];
 
 const MEDIUM_SEVERITY_KEYWORDS = [
-  'ghost', 'ghosted', 'rude', 'late', 'stood up', 'disrespect', 'ignored',
-  'mean', 'uncomfortable', 'weird', 'bad vibe', 'disappointed', 'awkward',
-  'boring', 'no show', 'cancelled', 'flaky',
+  'ghost', 'geghost', 'onbeschoft', 'laat', 'laten staan', 'respectloos', 'genegeerd',
+  'nederig', 'ongemakkelijk', 'raar', 'slechte vibe', 'teleurgesteld', 'ongemakkelijk',
+  'saai', 'niet komen opdagen', 'afgezegd', 'rude', 'disrespect',
 ];
 
 export default function SafetyScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user } = useAuth();
   const [responseText, setResponseText] = useState('');
   const [severity, setSeverity] = useState<Severity | null>(null);
@@ -59,16 +61,13 @@ export default function SafetyScreen() {
     const detected = analyzeText(responseText);
     setSeverity(detected);
 
-    // Save check-in
     await supabase.from('date_checkins').insert({
       user_id: user.id,
       response_text: responseText.trim(),
       severity: detected,
     });
 
-    // Apply karma penalty for medium/high severity
     if (detected === 'high') {
-      // In production this would target the specific match; for now we log the event
       await supabase.from('karma_events').insert({
         user_id: user.id,
         delta: -50,
@@ -89,25 +88,30 @@ export default function SafetyScreen() {
   if (submitted && severity) {
     return (
       <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <ArrowLeft size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={styles.resultContent}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.resultContent,
+            isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' },
+          ]}
+        >
           {severity === 'safe' && (
             <ResultCard
               icon={<CheckCircle2 size={40} color={Colors.success} />}
-              title="Glad to hear it went well!"
-              message="Your feedback has been recorded. Keep being your authentic self — your Karma score reflects your positive engagement."
+              title="Fijn om te horen dat het goed ging!"
+              message="Je feedback is opgeslagen. Blijf lekker jezelf — je Karma-score weerspiegelt jouw positieve bijdrage."
               color={Colors.success}
             />
           )}
           {severity === 'medium' && (
             <ResultCard
               icon={<Heart size={40} color={Colors.warning} />}
-              title="We're sorry that happened."
-              message="That kind of behavior isn't okay. We've noted this experience and applied an invisible Karma penalty. You won't see this person again."
+              title="Vervelend dat dit is gebeurd."
+              message="Dit soort gedrag accepteren we niet. We hebben een Karma-correctie toegepast en zorgen dat je deze persoon niet meer tegenkomt."
               color={Colors.warning}
             />
           )}
@@ -115,13 +119,13 @@ export default function SafetyScreen() {
             <View style={styles.highSeverityContainer}>
               <ResultCard
                 icon={<AlertTriangle size={40} color={Colors.error} />}
-                title="Your safety is our priority."
-                message="We've frozen the chat, blocked this user, and flagged their account for review. You are not alone — please reach out if you need help."
+                title="Jouw veiligheid is onze prioriteit."
+                message="We hebben de chat bevroren, deze gebruiker geblokkeerd en het account gemarkeerd voor controle. Je staat er niet alleen voor."
                 color={Colors.error}
               />
-              <Text style={styles.emergencyTitle}>Emergency Resources</Text>
+              <Text style={styles.emergencyTitle}>Noodnummers & Hulp</Text>
               <Text style={styles.emergencySubtitle}>
-                If you're in immediate danger, please call now.
+                Als je in direct gevaar bent, bel dan meteen.
               </Text>
               {SAFETY_RESOURCES.map((r) => (
                 <TouchableOpacity
@@ -141,10 +145,10 @@ export default function SafetyScreen() {
           )}
           <TouchableOpacity
             style={styles.doneBtn}
-            onPress={() => router.replace('/(tabs)')}
+            onPress={() => router.replace('/')}
             activeOpacity={0.85}
           >
-            <Text style={styles.doneBtnText}>Done</Text>
+            <Text style={styles.doneBtnText}>Klaar</Text>
           </TouchableOpacity>
         </ScrollView>
       </LinearGradient>
@@ -153,33 +157,35 @@ export default function SafetyScreen() {
 
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.privacyBadge}>
           <Shield size={14} color={Colors.success} />
-          <Text style={styles.privacyBadgeText}>Confidential</Text>
+          <Text style={styles.privacyBadgeText}>Vertrouwelijk</Text>
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.iconContainer}>
           <Shield size={32} color={Colors.primary} />
         </View>
-        <Text style={styles.pageTitle}>How did your date go?</Text>
+        <Text style={styles.pageTitle}>Hoe is je date gegaan?</Text>
         <Text style={styles.pageSubtitle}>
-          Your honest feedback helps keep Mail2Date safe. Share as much or as little as you'd like
-          — this is completely confidential.
+          Jouw eerlijke feedback helpt Mail2Date veilig te houden. Deel zoveel of zo weinig als je wilt — dit is 100% vertrouwelijk.
         </Text>
 
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.feedbackInput}
-            placeholder="Tell us about your experience in your own words..."
+            placeholder="Vertel in je eigen woorden hoe de date is verlopen..."
             placeholderTextColor={Colors.textTertiary}
             value={responseText}
             onChangeText={setResponseText}
@@ -200,18 +206,18 @@ export default function SafetyScreen() {
           {analyzing ? (
             <>
               <ActivityIndicator size="small" color={Colors.textInverse} />
-              <Text style={styles.submitBtnText}>Analyzing...</Text>
+              <Text style={styles.submitBtnText}>Analyseren...</Text>
             </>
           ) : (
             <>
               <Shield size={18} color={Colors.textInverse} />
-              <Text style={styles.submitBtnText}>Submit Feedback</Text>
+              <Text style={styles.submitBtnText}>Feedback Versturen</Text>
             </>
           )}
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          If you're in immediate danger, call 112. This form is not monitored 24/7.
+          Ben je in direct gevaar? Bel 112. Dit formulier is geen acute noodlijn.
         </Text>
       </ScrollView>
     </LinearGradient>

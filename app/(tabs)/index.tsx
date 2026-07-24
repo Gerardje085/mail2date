@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles, Heart, Bookmark, X, Clock, MapPin, Crown, Zap } from 'lucide-react-native';
@@ -26,6 +27,9 @@ const PLACEHOLDER_IMAGES = [
 ];
 
 export default function TodayScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   const { user, profile } = useAuth();
   const [match, setMatch] = useState<Match | null>(null);
   const [dateIdeas, setDateIdeas] = useState<DateIdea[]>([]);
@@ -155,7 +159,7 @@ export default function TodayScreen() {
       <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Curating your match...</Text>
+          <Text style={styles.loadingText}>Jouw dagelijkse match wordt samengesteld...</Text>
         </View>
       </LinearGradient>
     );
@@ -164,7 +168,10 @@ export default function TodayScreen() {
   return (
     <LinearGradient colors={[Colors.background, Colors.surface]} style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && { maxWidth: 680, alignSelf: 'center', width: '100%' },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
@@ -174,31 +181,30 @@ export default function TodayScreen() {
           <AppLogo size={36} showText={false} />
           <View style={styles.timerContainer}>
             <Clock size={14} color={Colors.textTertiary} />
-            <Text style={styles.timerText}>Next match in {nextMatchTime}</Text>
+            <Text style={styles.timerText}>Volgende match in {nextMatchTime}</Text>
           </View>
         </View>
 
         <Text style={styles.pageTitle}>Vandaag</Text>
-        <Text style={styles.pageSubtitle}>Your daily curated match</Text>
+        <Text style={styles.pageSubtitle}>Jouw dagelijkse doordachte match</Text>
 
         {match?.profile ? (
           <MatchCard match={match} onAction={handleMatchAction} />
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No match available today</Text>
+            <Text style={styles.emptyTitle}>Geen match beschikbaar vandaag</Text>
             <Text style={styles.emptySubtitle}>
-              We couldn't find a compatible match in your area. Try expanding your age range or
-              check back tomorrow!
+              We konden vandaag geen geschikte match in jouw regio vinden. Pas eventueel je leeftijds- of locatie-instellingen aan of kijk morgen weer!
             </Text>
           </View>
         )}
 
         <View style={styles.dateIdeasSection}>
           <View style={styles.dateIdeasHeader}>
-            <Text style={styles.sectionTitle}>Top 3 Date Ideas</Text>
+            <Text style={styles.sectionTitle}>Top 3 Date-Ideeën</Text>
             <View style={styles.premiumBadge}>
               <Crown size={12} color={Colors.accent} />
-              <Text style={styles.premiumBadgeText}>Top 10 with Mail2Date+</Text>
+              <Text style={styles.premiumBadgeText}>Top 10 met Mail2Date+</Text>
             </View>
           </View>
 
@@ -213,14 +219,14 @@ export default function TodayScreen() {
               />
             ))
           ) : (
-            <Text style={styles.noIdeasText}>No date ideas generated yet.</Text>
+            <Text style={styles.noIdeasText}>Nog geen date-ideeën gegenereerd.</Text>
           )}
         </View>
 
         {profile?.is_premium && (
           <TouchableOpacity style={styles.resetButton} onPress={generateMatch}>
             <Zap size={18} color={Colors.textInverse} />
-            <Text style={styles.resetButtonText}>Instant Match Reset</Text>
+            <Text style={styles.resetButtonText}>Direct Match Resetten</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -248,7 +254,7 @@ function MatchCard({
           <Image
             source={{
               uri: p.photo_url ||
-                'https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
             }}
             style={styles.matchPhoto}
             resizeMode="cover"
@@ -261,7 +267,7 @@ function MatchCard({
             <Text style={styles.matchName}>{p.first_name}, {p.age}</Text>
             <View style={styles.matchLocation}>
               <MapPin size={12} color={Colors.textSecondary} />
-              <Text style={styles.matchLocationText}>{p.city}</Text>
+              <Text style={styles.matchLocationText}>{p.city || 'Nederland'}</Text>
             </View>
           </View>
           <View style={styles.compatibilityBadge}>
@@ -288,7 +294,7 @@ function MatchCard({
               activeOpacity={0.7}
             >
               <X size={22} color={Colors.textSecondary} />
-              <Text style={styles.passButtonText}>Pass</Text>
+              <Text style={styles.passButtonText}>Overslaan</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.acceptButton}
@@ -296,13 +302,13 @@ function MatchCard({
               activeOpacity={0.7}
             >
               <Heart size={22} color={Colors.textInverse} />
-              <Text style={styles.acceptButtonText}>Accept</Text>
+              <Text style={styles.acceptButtonText}>Accepteren</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.matchStatusContainer}>
             <Text style={styles.matchStatusText}>
-              {match.status === 'accepted' ? 'Match accepted! Check your chats.' : 'Passed — check back tomorrow.'}
+              {match.status === 'accepted' ? 'Match geaccepteerd! Bekijk je chats om het gesprek te starten.' : 'Overgeslagen — morgen staat er weer een nieuwe match voor je klaar.'}
             </Text>
           </View>
         )}
@@ -351,95 +357,24 @@ function DateIdeaCard({
               onPress={() => onAction(idea.id, 'saved')}
             >
               <Bookmark size={16} color={Colors.textSecondary} />
-              <Text style={styles.dateIdeaSaveText}>Save</Text>
+              <Text style={styles.dateIdeaSaveText}>Bewaren</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.dateIdeaAcceptBtn}
               onPress={() => onAction(idea.id, 'accepted')}
             >
               <Heart size={16} color={Colors.textInverse} />
-              <Text style={styles.dateIdeaAcceptText}>Accept</Text>
+              <Text style={styles.dateIdeaAcceptText}>Accepteren</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <Text style={styles.dateIdeaStatusText}>
-            {idea.status === 'accepted' ? 'Accepted!' : idea.status === 'saved' ? 'Saved for later' : 'Passed'}
+            {idea.status === 'accepted' ? 'Geaccepteerd!' : idea.status === 'saved' ? 'Bewaard voor later' : 'Overgeslagen'}
           </Text>
         )}
       </View>
     </View>
   );
-}
-
-function generateDateIdeas(
-  matchId: string,
-  userId: string,
-  sharedInterests: string[],
-  candidate: Profile
-): Omit<DateIdea, 'id' | 'created_at'>[] {
-  const ideas: Omit<DateIdea, 'id' | 'created_at'>[] = [];
-
-  if (sharedInterests.includes('Specialty Coffee') || sharedInterests.includes('Craft Beer')) {
-    ideas.push({
-      match_id: matchId,
-      user_id: userId,
-      title: 'Coffee & Conversation',
-      description: `Start with a flat white at a specialty coffee bar, then take a walk through the city. Perfect for getting to know each other.`,
-      venue_name: 'Scandinavian Embassy',
-      venue_type: 'coffee',
-      status: 'pending',
-    });
-  }
-
-  if (sharedInterests.includes('Indie Cinema') || sharedInterests.includes('Live Music')) {
-    ideas.push({
-      match_id: matchId,
-      user_id: userId,
-      title: 'Indie Film Night',
-      description: `Catch the latest indie release at Pathé City, followed by drinks at a nearby bar to discuss the film.`,
-      venue_name: 'Pathé City',
-      venue_type: 'cinema',
-      status: 'pending',
-    });
-  }
-
-  if (sharedInterests.includes('Fine Dining') || sharedInterests.includes('Wine Tasting')) {
-    ideas.push({
-      match_id: matchId,
-      user_id: userId,
-      title: 'Dinner at De Kas',
-      description: `Enjoy a farm-to-table dining experience at Restaurant De Kas, set in a historic greenhouse. A memorable first date.`,
-      venue_name: 'Restaurant De Kas',
-      venue_type: 'dinner',
-      status: 'pending',
-    });
-  }
-
-  // Fill with defaults if less than 3
-  if (ideas.length < 3) {
-    ideas.push({
-      match_id: matchId,
-      user_id: userId,
-      title: 'Vondelpark Stroll',
-      description: `A relaxed walk through Vondelpark with coffee in hand. Low pressure, great conversation.`,
-      venue_name: 'Vondelpark',
-      venue_type: 'walk',
-      status: 'pending',
-    });
-  }
-  if (ideas.length < 3) {
-    ideas.push({
-      match_id: matchId,
-      user_id: userId,
-      title: 'Museum Date',
-      description: `Explore the Eye Filmmuseum and take the free ferry across the IJ. Culture and conversation.`,
-      venue_name: 'Eye Filmmuseum',
-      venue_type: 'museum',
-      status: 'pending',
-    });
-  }
-
-  return ideas.slice(0, 3);
 }
 
 const styles = StyleSheet.create({
